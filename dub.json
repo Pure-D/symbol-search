@@ -1,7 +1,7 @@
 {
 	"dependencies": {
 		"vibe-d": "~>0.8.4",
-		"mongoschemad": { "path": "../MongoSchemaD" },
+		"mongoschemad": "~>2.6.0",
 		":types": { "path": "types" },
 		"rm-rf": "~>0.1.0"
 	},
