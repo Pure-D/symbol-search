@@ -29,8 +29,15 @@ void fetchDubProjects()
 		sleep(1.seconds);
 }
 
+long symbolsAdded, versionsAdded, versionsRemoved, projectErrors;
+
 void indexAllProjects()
 {
+	symbolsAdded = 0;
+	versionsAdded = 0;
+	versionsRemoved = 0;
+	projectErrors = 0;
+
 	fetchDubProjects();
 	Task[16] tasks; // tasks running at once
 	foreach (obj; parseJsonString(readFileUTF8("dump.json").strip, "dump.json"))
@@ -51,6 +58,13 @@ void indexAllProjects()
 		auto project = obj.deserializeJson!(ProjectDescription.DubProject);
 		tasks[task] = runTask((&indexProject).toDelegate, project);
 	}
+	foreach (t; tasks)
+		if (t && t.running)
+			t.join();
+
+	logInfo("Added %s symbols", symbolsAdded);
+	logInfo("Added %s tags, removed %s tags", versionsAdded, versionsRemoved);
+	logInfo("%s projects errored", projectErrors);
 }
 
 void indexProject(ProjectDescription.DubProject dub)
@@ -89,6 +103,10 @@ void indexProject(ProjectDescription.DubProject dub)
 	{
 		logInfo("Indexed %s new symbols for %s", res.symbols.length, project.dub.name);
 
+		symbolsAdded += res.symbols.length;
+		versionsAdded += res.addedVersions.length;
+		versionsRemoved += res.versionsToRemove.length;
+
 		Symbol.insertMany(res.symbols);
 
 		if (res.versionsToRemove.length || res.addedVersions.length)
@@ -104,6 +122,7 @@ void indexProject(ProjectDescription.DubProject dub)
 	{
 		logInfo("Errored indexing %s", project.dub.name);
 
+		projectErrors++;
 		project = ProjectDescription.findById(project.bsonID);
 		project.versions.length = 0;
 		project.save();
@@ -139,6 +158,7 @@ SymbolIndexResult* doSymbolIndex(BsonObjectID projectID, string dubName, string 
 	auto path = buildPath("clones", projectID.toString ~ "-" ~ dubName);
 	if (!exists(path))
 		mkdirRecurse(path);
+	environment["GIT_TERMINAL_PROMPT"] = "0";
 
 	int git(string[] args)
 	{
@@ -158,6 +178,8 @@ SymbolIndexResult* doSymbolIndex(BsonObjectID projectID, string dubName, string 
 		logInfo("Fetch returned %s", ret);
 		return null;
 	}
+
+	git(["reset", "--hard", "HEAD"]);
 
 	foreach_reverse (i, ref ver; versions)
 	{
@@ -198,6 +220,7 @@ Symbol[] makeProjectSymbols(string path, ProjectIdentifier project)
 	Symbol[] ret;
 	string[string] packageLookup;
 	ubyte[1024 * 4] buffer = void;
+	ubyte[1024 * 4] readBuffer = void;
 	sleep(20.msecs);
 	foreach (line; output.readEnd.byLine)
 	{
@@ -244,7 +267,7 @@ Symbol[] makeProjectSymbols(string path, ProjectIdentifier project)
 						}
 					}
 					while (!modout.readEnd.eof)
-						modout.readEnd.rawRead(buffer[]);
+						modout.readEnd.rawRead(readBuffer[]);
 					modout.close();
 					auto status = p2.wait();
 					if (status != 0)

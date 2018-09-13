@@ -7,7 +7,7 @@ import mongoschema;
 
 void main(string[] args)
 {
-	if (args.length < 2 || args[1] == "-h" || args[1] == "--h" || args[1] == "--help")
+	if (args.length < 1 || args[1] == "-h" || args[1] == "--h" || args[1] == "--help")
 	{
 		logInfo("Usage: " ~ args[0] ~ " [host] [db]");
 		logInfo("Run this program in a crontab every hour or so to re-index all projects");
@@ -15,7 +15,7 @@ void main(string[] args)
 	}
 
 	auto conn = connectMongoDB(args[1]); // "mongodb://127.0.0.1"
-	auto db = conn.getDatabase(args[2]); // "symbolsearch"
+	auto db = conn.getDatabase("symbolsearch");
 
 	db["projects"].register!ProjectDescription;
 	db["symbols"].register!Symbol;
