@@ -1,0 +1,9 @@
+{
+	"dependencies": {
+		"vibe-d": "~>0.8.4",
+		"mongoschemad": "~>2.6.0",
+		"symbol-search:types": { "path": ".." },
+		"rm-rf": "~>0.1.0"
+	},
+	"name": "indexer"
+}

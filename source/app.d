@@ -1,24 +1,24 @@
 import vibe.vibe;
 
-import symbolsearch.mksymbols;
-import symbolsearch.project;
+import symbolsearch.api;
+import symbolsearch.types;
+
+import mongoschema;
 
 void main()
 {
-	auto data = readFileUTF8("dump.json").parseJsonString.deserializeJson!(ProjectDescription[]);
+	auto conn = connectMongoDB("mongodb://127.0.0.1");
+	auto db = conn.getDatabase("symbolsearch");
 
-	logInfo("Parsed");
-	indexProject(cast(shared) data[0]);
+	db["projects"].register!ProjectDescription;
+	db["symbols"].register!Symbol;
 
 	auto settings = new HTTPServerSettings;
 	settings.port = 3000;
 	settings.bindAddresses = ["::1", "127.0.0.1"];
-	listenHTTP(settings, &hello);
+	auto router = new URLRouter;
+	router.registerRestInterface(new SymbolSearchAPI);
+	listenHTTP(settings, router);
 
 	runApplication();
-}
-
-void hello(HTTPServerRequest req, HTTPServerResponse res)
-{
-	res.writeBody("Hello World");
 }

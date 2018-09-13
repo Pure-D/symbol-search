@@ -7,3 +7,6 @@ dub.selections.json
 *.dll
 *.exe
 dump.json
+/clones
+*.a
+/symbol-search
